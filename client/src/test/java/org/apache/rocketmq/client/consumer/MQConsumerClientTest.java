@@ -13,6 +13,7 @@ import org.junit.Test;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * @author:
@@ -26,12 +27,13 @@ public class MQConsumerClientTest {
         String namesrvAddr = "10.75.167.72:9876";
         String brokerName = "lejr-mac-notebook.local";
         String topic = "myTopicTest";
+        int queueId = 4;
 
         DefaultMQPullConsumer pullConsumer = new DefaultMQPullConsumer(consumerGroup);
         pullConsumer.setNamesrvAddr(namesrvAddr);
         pullConsumer.start();
 
-        MessageQueue messageQueue = new MessageQueue(topic, brokerName, 4);
+        MessageQueue messageQueue = new MessageQueue(topic, brokerName, queueId);
         PullResult pullResult = pullConsumer.pull(messageQueue, "*", 0, 3);
 
         System.out.println(pullResult);
@@ -60,19 +62,25 @@ public class MQConsumerClientTest {
 
         DefaultMQPushConsumer pushConsumer = new DefaultMQPushConsumer(consumerGroup);
         pushConsumer.setNamesrvAddr(namesrvAddr);
-        pushConsumer.setPullInterval(60 * 1000);
+//        pushConsumer.setPullInterval(60 * 1000);
+
+        final CountDownLatch countDownLatch = new CountDownLatch(1000);
 
         pushConsumer.registerMessageListener(new MessageListenerConcurrently() {
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
-                                                            ConsumeConcurrentlyContext context) throws UnsupportedEncodingException {
+                                                            ConsumeConcurrentlyContext context) {
 
-                for(MessageExt msg:msgs) {
-                    String msgId = msg.getMsgId();
-                    String msgBody = new String(msg.getBody(), "UTF-8");
-                    System.out.println("msgId=" + msgId + ", msgBody=" + msgBody);
+                try {
+                    for(MessageExt msg:msgs) {
+                        String msgId = msg.getMsgId();
+                        String msgBody = new String(msg.getBody(), "UTF-8");
+                        System.out.println("msgId=" + msgId + ", msgBody=" + msgBody);
+                    }
+                    countDownLatch.countDown();
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
                 }
-
 
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
@@ -86,6 +94,12 @@ public class MQConsumerClientTest {
 //        Field field = DefaultMQPushConsumerImpl.class.getDeclaredField("rebalanceImpl");
 //        field.setAccessible(true);
 //        field.set(pushConsumerImpl, rebalancePushImpl);
+
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
     }
 
