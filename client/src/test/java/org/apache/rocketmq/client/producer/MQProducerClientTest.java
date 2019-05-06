@@ -17,9 +17,9 @@ public class MQProducerClientTest {
         String producerGroupTemp = "producerGroupName";
         String topic = "myTopicTest";
         DefaultMQProducer producer = new DefaultMQProducer(producerGroupTemp);
-        producer.setNamesrvAddr("10.75.167.72:9876");
+        producer.setNamesrvAddr("10.58.84.55:9876");
 //        producer.setCompressMsgBodyOverHowmuch(16);
-        Message message = new Message(topic, "This is a very huge message!".getBytes());
+        Message message = new Message(topic, "This is a very huge message999!".getBytes());
 
         producer.start();
 

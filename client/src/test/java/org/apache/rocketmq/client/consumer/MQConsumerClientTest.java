@@ -1,8 +1,6 @@
 package org.apache.rocketmq.client.consumer;
 
-import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
-import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
-import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
+import org.apache.rocketmq.client.consumer.listener.*;
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.message.MessageExt;
@@ -24,7 +22,7 @@ public class MQConsumerClientTest {
     @Test
     public void consumeByPull() throws MQClientException, RemotingException, InterruptedException, MQBrokerException, UnsupportedEncodingException {
         String consumerGroup = "producerGroupName";
-        String namesrvAddr = "10.75.167.72:9876";
+        String namesrvAddr = "10.58.84.55:9876";
         String brokerName = "lejr-mac-notebook.local";
         String topic = "myTopicTest";
         int queueId = 4;
@@ -57,7 +55,7 @@ public class MQConsumerClientTest {
     public void consumeByPush() throws MQClientException {
 
         String consumerGroup = "producerGroupName";
-        String namesrvAddr = "10.75.167.72:9876";
+        String namesrvAddr = "10.58.84.55:9876";
         String topic = "myTopicTest";
 
         DefaultMQPushConsumer pushConsumer = new DefaultMQPushConsumer(consumerGroup);
@@ -103,5 +101,55 @@ public class MQConsumerClientTest {
 
     }
 
+    @Test
+    public void consumeOrderlyByPush() throws MQClientException {
+
+        String consumerGroup = "producerGroupName";
+        String namesrvAddr = "10.58.84.55:9876";
+        String topic = "myTopicTest";
+
+        DefaultMQPushConsumer pushConsumer = new DefaultMQPushConsumer(consumerGroup);
+        pushConsumer.setNamesrvAddr(namesrvAddr);
+//        pushConsumer.setPullInterval(60 * 1000);
+
+        final CountDownLatch countDownLatch = new CountDownLatch(1000);
+
+        pushConsumer.registerMessageListener(new MessageListenerOrderly() {
+            @Override
+            public ConsumeOrderlyStatus consumeMessage(List<MessageExt> msgs, ConsumeOrderlyContext context) {
+                try {
+
+                    MessageQueue messageQueue = context.getMessageQueue();
+                    if(messageQueue != null) {
+                        System.out.printf("brokerName=%s, topic=%s, queueId=%s", messageQueue.getBrokerName(), messageQueue.getTopic(), messageQueue.getQueueId());
+                    }
+                    System.out.println();
+
+                    for(MessageExt msg:msgs) {
+                        String msgId = msg.getMsgId();
+                        String msgBody = new String(msg.getBody(), "UTF-8");
+                        System.out.println("msgId=" + msgId + ", msgBody=" + msgBody);
+                    }
+                    countDownLatch.countDown();
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+
+                return ConsumeOrderlyStatus.SUCCESS;
+            }
+
+        });
+
+        pushConsumer.subscribe(topic, "*");
+        pushConsumer.start();
+
+
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
 
 }
