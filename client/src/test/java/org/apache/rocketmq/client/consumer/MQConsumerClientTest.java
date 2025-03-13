@@ -22,8 +22,8 @@ public class MQConsumerClientTest {
     @Test
     public void consumeByPull() throws MQClientException, RemotingException, InterruptedException, MQBrokerException, UnsupportedEncodingException {
         String consumerGroup = "producerGroupName";
-        String namesrvAddr = "10.58.84.55:9876";
-        String brokerName = "lejr-mac-notebook.local";
+        String namesrvAddr = "127.0.0.1:9876";
+        String brokerName = "broker-a";
         String topic = "myTopicTest";
         int queueId = 4;
 
@@ -55,7 +55,7 @@ public class MQConsumerClientTest {
     public void consumeByPush() throws MQClientException {
 
         String consumerGroup = "producerGroupName";
-        String namesrvAddr = "10.58.84.55:9876";
+        String namesrvAddr = "127.0.0.1:9876";
         String topic = "myTopicTest";
 
         DefaultMQPushConsumer pushConsumer = new DefaultMQPushConsumer(consumerGroup);
@@ -105,7 +105,7 @@ public class MQConsumerClientTest {
     public void consumeOrderlyByPush() throws MQClientException {
 
         String consumerGroup = "producerGroupName";
-        String namesrvAddr = "10.58.84.55:9876";
+        String namesrvAddr = "127.0.0.1:9876";
         String topic = "myTopicTest";
 
         DefaultMQPushConsumer pushConsumer = new DefaultMQPushConsumer(consumerGroup);

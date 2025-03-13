@@ -585,29 +585,57 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 从nameserver服务器拉取topic信息
+     * @param topic
+     * @param isDefault
+     * @param defaultMQProducer
+     * @return
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
-        DefaultMQProducer defaultMQProducer) {
+                                                      DefaultMQProducer defaultMQProducer) {
         try {
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     TopicRouteData topicRouteData;
+                    /**
+                     * 当前处理的是默认主题, 且存在有效的默认生产者实例
+                     */
                     if (isDefault && defaultMQProducer != null) {
+                        /**
+                         * 通过命名服务（NameServer）获取默认主题路由信息
+                         */
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
-                            1000 * 3);
+                                1000 * 3);
                         if (topicRouteData != null) {
                             for (QueueData data : topicRouteData.getQueueDatas()) {
+                                /**
+                                 * 容量控制策略：取「生产者默认队列数」和「现有读队列数」的较小值，防止队列数量超出系统承载能力，这与云计算中的弹性伸缩逻辑异曲同工
+                                 */
                                 int queueNums = Math.min(defaultMQProducer.getDefaultTopicQueueNums(), data.getReadQueueNums());
+                                /**
+                                 * 强制设置读写队列数量相同，遵循分布式系统CAP原则中的一致性要求
+                                 */
                                 data.setReadQueueNums(queueNums);
                                 data.setWriteQueueNums(queueNums);
                             }
                         }
                     } else {
+                        /**
+                         * 常规主题直接获取路由信息
+                         */
                         topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, 1000 * 3);
                     }
                     if (topicRouteData != null) {
                         TopicRouteData old = this.topicRouteTable.get(topic);
+                        /**
+                         * 判断路由信息是否变化
+                         */
                         boolean changed = topicRouteDataIsChange(old, topicRouteData);
                         if (!changed) {
+                            /**
+                             * 判断是否需要更新路由信息
+                             */
                             changed = this.isNeedUpdateTopicRouteInfo(topic);
                         } else {
                             log.info("the topic[{}] route info changed, old[{}] ,new[{}]", topic, old, topicRouteData);
@@ -616,11 +644,17 @@ public class MQClientInstance {
                         if (changed) {
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
+                            /**
+                             * 更新broker地址信息
+                             */
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
 
                             // Update Pub info
+                            /**
+                             * 更新生产者信息
+                             */
                             {
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);
@@ -635,6 +669,9 @@ public class MQClientInstance {
                             }
 
                             // Update sub info
+                            /**
+                             * 更新消费者信息
+                             */
                             {
                                 Set<MessageQueue> subscribeInfo = topicRouteData2TopicSubscribeInfo(topic, topicRouteData);
                                 Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
@@ -761,6 +798,12 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 判断路由数据是否变化
+     * @param olddata
+     * @param nowdata
+     * @return
+     */
     private boolean topicRouteDataIsChange(TopicRouteData olddata, TopicRouteData nowdata) {
         if (olddata == null || nowdata == null)
             return true;
@@ -774,6 +817,11 @@ public class MQClientInstance {
 
     }
 
+    /**
+     * 判断是否需要更新路由信息
+     * @param topic
+     * @return
+     */
     private boolean isNeedUpdateTopicRouteInfo(final String topic) {
         boolean result = false;
         {

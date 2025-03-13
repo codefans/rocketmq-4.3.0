@@ -193,6 +193,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
+     * 同步模式发送消息
      * Send message in synchronous mode. This method returns only when the sending procedure totally completes.
      * </p>
      *
@@ -215,6 +216,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
+     * 同步发送消息, 指定超时时间timeout
      * Same to {@link #send(Message)} with send timeout specified in addition.
      *
      * @param msg Message to send.
@@ -233,6 +235,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
+     * 异步发送消息
      * Send message to broker asynchronously.
      * </p>
      *
@@ -256,6 +259,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
+     * 异步发送消息, 指定超时时间timeout
      * Same to {@link #send(Message, SendCallback)} with send timeout specified in addition.
      *
      * @param msg message to send.
@@ -272,8 +276,12 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
-     * Similar to <a href="https://en.wikipedia.org/wiki/User_Datagram_Protocol">UDP</a>, this method won't wait for
-     * acknowledgement from broker before return. Obviously, it has maximums throughput yet potentials of message loss.
+     *
+     * Similar to <a href="https://en.wikipedia.org/wiki/User_Datagram_Protocol">UDP</a>,
+     * this method won't wait for acknowledgement from broker before return.
+     * 该方法不会等到broker确认后才返回,
+     * Obviously, it has maximums throughput yet potentials of message loss.
+     * 显然, 有最大的吞吐量, 但是有消息丢失的可能
      *
      * @param msg Message to send.
      * @throws MQClientException if there is any client error.
@@ -287,6 +295,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Same to {@link #send(Message)} with target message queue specified in addition.
+     * 消息发送到指定的queue队列
      *
      * @param msg Message to send.
      * @param mq Target message queue.
@@ -305,7 +314,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Same to {@link #send(Message)} with target message queue and send timeout specified.
-     *
+     * 消息发送到指定的queue队列，并指定超时时间
      * @param msg Message to send.
      * @param mq Target message queue.
      * @param timeout send timeout.

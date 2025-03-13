@@ -55,21 +55,49 @@ public class MQFaultStrategy {
         this.sendLatencyFaultEnable = sendLatencyFaultEnable;
     }
 
+    /**
+     *
+     * 消息队列选择策略，在保证消息投递效率（低延迟）的同时，提供四级容错机制
+     *
+     * @param tpInfo
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
+        /**
+         * 1. 延迟容错模式开关
+         */
         if (this.sendLatencyFaultEnable) {
             try {
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
                 for (int i = 0; i < tpInfo.getMessageQueueList().size(); i++) {
+                    /**
+                     * 2. 主队列选择算法（轮询策略）
+                     * 取模运算：实现无状态轮询（Round-Robin），类似Nginx的默认负载均衡策略
+                     * 消息队列负载均衡：避免单队列过热，符合「均匀分配」设计原则
+                     */
                     int pos = Math.abs(index++) % tpInfo.getMessageQueueList().size();
                     if (pos < 0)
                         pos = 0;
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
+                    /**
+                     * 3. 队列健康检查机制
+                     */
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
+                        /**
+                         * null == lastBrokerName --> 选择第一个broker
+                         * mq.getBrokerName().equals(lastBrokerName) --> 优先选择上次使用的Broker，减少元数据重复加载
+                         */
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
                     }
                 }
 
+                /**
+                 * 4. 次优Broker回退策略
+                 * 降级策略：当最优Broker不可用时，采用「次优选择算法」
+                 * 资源预留机制：保证每个Broker至少保留可用队列
+                 */
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {
@@ -85,7 +113,10 @@ public class MQFaultStrategy {
             } catch (Exception e) {
                 log.error("Error occurred when selecting message queue", e);
             }
-
+            /**
+             * 5. 最终保底策略
+             * 即使所有策略失效，仍能选择任意可用队列
+             */
             return tpInfo.selectOneMessageQueue();
         }
 
